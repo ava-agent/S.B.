@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sb-bg: #FFFFFF;
+  --color-sb-bg-secondary: #F4F4F5;
+  --color-sb-text: #18181B;
+  --color-sb-text-secondary: #71717A;
+  --color-sb-accent: #C5F36F;
+  --color-sb-border: #E5E5E5;
+  --color-sb-dark: #18181B;
+
+  --font-serif: "Instrument Serif", serif;
+  --font-sans: "Geist Sans", sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  --radius-button: 8px;
+  --radius-card: 12px;
+
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-sb-text);
+  background: var(--color-sb-bg);
+}
