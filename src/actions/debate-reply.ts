@@ -1,10 +1,15 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { buildDebateSystemPrompt } from "@/lib/prompts";
 import type { Message, Stance } from "@/lib/types";
 
-const client = new Anthropic();
+const client = new OpenAI({
+  apiKey: process.env.GLM_API_KEY,
+  baseURL: "https://open.bigmodel.cn/api/paas/v4",
+});
+
+const MODEL = "glm-4-flash";
 
 export async function getDebateReply(
   topic: string,
@@ -14,26 +19,29 @@ export async function getDebateReply(
 ): Promise<string> {
   const systemPrompt = buildDebateSystemPrompt(topic, stance, round);
 
-  const TRIGGER_MESSAGE = {
-    role: "user" as const,
+  const TRIGGER_MESSAGE: OpenAI.ChatCompletionUserMessageParam = {
+    role: "user",
     content: "辩论开始。请你先发言，挑衅式地抛出你的核心论点。",
   };
 
   // If round 1 and no messages yet, S.B. starts first
   if (round === 1 && messages.length === 0) {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
+    const response = await client.chat.completions.create({
+      model: MODEL,
       max_tokens: 1024,
-      system: systemPrompt,
-      messages: [TRIGGER_MESSAGE],
+      messages: [
+        { role: "system", content: systemPrompt },
+        TRIGGER_MESSAGE,
+      ],
     });
 
-    return (response.content[0] as { type: "text"; text: string }).text;
+    return response.choices[0].message.content ?? "";
   }
 
   // For rounds 2+, prepend the synthetic trigger message so the conversation
-  // starts with a "user" role (Claude API requirement), then alternate properly.
-  const apiMessages: { role: "user" | "assistant"; content: string }[] = [
+  // starts with a "user" role, then alternate properly.
+  const apiMessages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
     TRIGGER_MESSAGE,
     ...messages.map((m) => ({
       role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
@@ -41,12 +49,11 @@ export async function getDebateReply(
     })),
   ];
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
+  const response = await client.chat.completions.create({
+    model: MODEL,
     max_tokens: 1024,
-    system: systemPrompt,
     messages: apiMessages,
   });
 
-  return (response.content[0] as { type: "text"; text: string }).text;
+  return response.choices[0].message.content ?? "";
 }

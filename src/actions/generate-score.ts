@@ -1,11 +1,16 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { buildScoringPrompt } from "@/lib/prompts";
 import { calculateSbIndex } from "@/lib/scoring";
 import type { Message, Stance, DebateScore, Grade } from "@/lib/types";
 
-const client = new Anthropic();
+const client = new OpenAI({
+  apiKey: process.env.GLM_API_KEY,
+  baseURL: "https://open.bigmodel.cn/api/paas/v4",
+});
+
+const MODEL = "glm-4-flash";
 
 const VALID_GRADES: Grade[] = [
   "S", "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "D",
@@ -22,13 +27,13 @@ export async function generateScore(
 ): Promise<DebateScore> {
   const prompt = buildScoringPrompt(topic, stance, messages);
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
+  const response = await client.chat.completions.create({
+    model: MODEL,
     max_tokens: 512,
     messages: [{ role: "user", content: prompt }],
   });
 
-  const text = (response.content[0] as { type: "text"; text: string }).text;
+  const text = response.choices[0].message.content ?? "";
 
   // Extract JSON from response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
