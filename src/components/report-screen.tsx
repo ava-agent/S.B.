@@ -1,3 +1,5 @@
+"use client";
+
 import type { DebateScore } from "@/lib/types";
 import { getSbTierLabel } from "@/lib/scoring";
 

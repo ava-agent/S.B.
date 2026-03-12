@@ -81,7 +81,7 @@ export default function Home() {
         // Final round complete — generate score
         const score = await generateScore(topic.title, stance, updatedMessages);
         // Save in background, don't block UI
-        saveDebate(topic.id, stance, updatedMessages, score).catch(() => {});
+        saveDebate(topic.id, stance, updatedMessages, score).catch((e) => console.error("Failed to save debate:", e));
         setState((s) => ({ ...s, phase: "report", score, isLoading: false }));
       } else {
         // Get S.B.'s next round reply

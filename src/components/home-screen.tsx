@@ -1,3 +1,5 @@
+"use client";
+
 import type { Topic, Stance } from "@/lib/types";
 
 interface HomeScreenProps {
