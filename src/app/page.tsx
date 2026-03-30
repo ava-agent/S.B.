@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { DebateState, Stance, Message, DebateHistory, DebateScore } from "@/lib/types";
+import type { DebateState, Stance, Message, DebateHistory, DebateScore, Topic } from "@/lib/types";
 import { MAX_ROUNDS } from "@/lib/constants";
 import { HomeScreen } from "@/components/home-screen";
 import { DebateScreen } from "@/components/debate-screen";
 import { ReportScreen } from "@/components/report-screen";
 import { HistoryScreen } from "@/components/history-screen";
 import { StatsScreen } from "@/components/stats-screen";
+import { TopicBrowser } from "@/components/topic-browser";
 import { getTodayTopic } from "@/actions/get-topic";
+import { getCategories } from "@/actions/get-categories";
+import { getTopics } from "@/actions/get-topics";
 import { getDebateReply } from "@/actions/debate-reply";
 import { generateScore } from "@/actions/generate-score";
 import { saveDebate } from "@/actions/save-debate";
@@ -32,16 +35,54 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showTopicBrowser, setShowTopicBrowser] = useState(false);
+
   // Use ref to avoid stale closures in async callbacks
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // 加载今日话题和分类
   useEffect(() => {
-    getTodayTopic()
-      .then((topic) => setState((s) => ({ ...s, topic, isLoading: false })))
-      .catch(() =>
-        setState((s) => ({ ...s, isLoading: false, error: "加载辩题失败，请刷新重试" }))
-      );
+    async function loadInitialData() {
+      try {
+        const [topic, cats] = await Promise.all([
+          getTodayTopic(),
+          getCategories(),
+        ]);
+        setCategories(cats);
+        setState((s) => ({ ...s, topic, isLoading: false }));
+      } catch {
+        setState((s) => ({ ...s, isLoading: false, error: "加载辩题失败，请刷新重试" }));
+      }
+    }
+
+    loadInitialData();
+  }, []);
+
+  // 当选择分类时，加载该分类的话题
+  const handleSelectCategory = useCallback(async (category: string | null) => {
+    setSelectedCategory(category);
+    setState((s) => ({ ...s, isLoading: true }));
+
+    try {
+      if (category === null) {
+        // 加载今日话题
+        const topic = await getTodayTopic();
+        setState((s) => ({ ...s, topic, isLoading: false }));
+      } else {
+        // 加载该分类的最新话题
+        const topics = await getTopics({ category, limit: 1 });
+        if (topics.length > 0) {
+          setState((s) => ({ ...s, topic: topics[0], isLoading: false }));
+        } else {
+          setState((s) => ({ ...s, isLoading: false, error: "该分类暂无话题" }));
+        }
+      }
+    } catch {
+      setState((s) => ({ ...s, isLoading: false, error: "加载话题失败" }));
+    }
   }, []);
 
   const handleSelectStance = useCallback(async (stance: Stance) => {
@@ -201,6 +242,23 @@ export default function Home() {
     }));
   }, []);
 
+  const handleBrowseTopics = useCallback(() => {
+    setShowTopicBrowser(true);
+  }, []);
+
+  const handleCloseTopicBrowser = useCallback(() => {
+    setShowTopicBrowser(false);
+  }, []);
+
+  const handleSelectTopic = useCallback((topic: Topic) => {
+    setState((s) => ({
+      ...s,
+      topic,
+      phase: "home",
+    }));
+    setShowTopicBrowser(false);
+  }, []);
+
   // Error display
   if (state.error && state.phase === "home") {
     return (
@@ -234,18 +292,43 @@ export default function Home() {
     );
   }
 
-  switch (state.phase) {
-    case "home":
-      return <HomeScreen topic={state.topic} onSelectStance={handleSelectStance} onViewHistory={handleViewHistory} onViewStats={handleViewStats} />;
+  return (
+    <>
+      {showTopicBrowser && (
+        <TopicBrowser
+          currentTopicId={state.topic.id}
+          onSelectTopic={handleSelectTopic}
+          onClose={handleCloseTopicBrowser}
+        />
+      )}
 
-    case "stats":
-      return <StatsScreen stats={stats!} isLoading={statsLoading} onClose={handleCloseStats} />;
+      {state.phase === "home" && (
+        <HomeScreen
+          topic={state.topic}
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectStance={handleSelectStance}
+          onViewHistory={handleViewHistory}
+          onViewStats={handleViewStats}
+          onBrowseTopics={handleBrowseTopics}
+          onSelectCategory={handleSelectCategory}
+        />
+      )}
 
-    case "history":
-      return <HistoryScreen history={history} isLoading={historyLoading} onClose={handleCloseHistory} onViewDetail={handleViewDebateDetail} />;
+      {state.phase === "stats" && (
+        <StatsScreen stats={stats!} isLoading={statsLoading} onClose={handleCloseStats} />
+      )}
 
-    case "debate":
-      return (
+      {state.phase === "history" && (
+        <HistoryScreen
+          history={history}
+          isLoading={historyLoading}
+          onClose={handleCloseHistory}
+          onViewDetail={handleViewDebateDetail}
+        />
+      )}
+
+      {state.phase === "debate" && (
         <DebateScreen
           topicTitle={state.topic.title}
           currentRound={state.currentRound}
@@ -255,10 +338,9 @@ export default function Home() {
           onSendMessage={handleSendMessage}
           error={state.error}
         />
-      );
+      )}
 
-    case "report":
-      return state.score ? (
+      {state.phase === "report" && state.score && (
         <ReportScreen
           topicTitle={state.topic?.title || ""}
           stance={state.stance!}
@@ -267,6 +349,7 @@ export default function Home() {
           onSaveCard={handleSaveCard}
           onPlayAgain={handlePlayAgain}
         />
-      ) : null;
-  }
+      )}
+    </>
+  );
 }

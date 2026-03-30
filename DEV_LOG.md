@@ -66,3 +66,20 @@
 - GitHub commit: 7f80488
 
 **下一步**: 实现话题分类和筛选功能
+
+### 2026-03-31 (Session 5)
+**任务**: 实现话题分类和筛选功能
+**状态**: ✅ 完成
+**内容**:
+- 更新 Topic 类型，已有 category 字段支持
+- 创建 get-categories.ts action 获取所有话题分类
+- 创建 get-topics-by-category.ts action 按分类获取话题
+- 创建 get-topics.ts action 支持多条件筛选话题
+- 创建 CategoryFilter 可复用组件
+- 创建 TopicBrowser 组件浏览历史话题
+- 更新 HomeScreen，添加分类筛选下拉菜单和话题浏览入口
+- 更新 page.tsx，集成分类筛选和话题浏览功能
+- 添加相关测试用例（5个新测试，全部通过）
+- 所有测试通过 (31/31)
+
+**提交**: `git add . && git commit -m "feat: add topic categories and filtering"`
