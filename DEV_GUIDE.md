@@ -2,23 +2,16 @@
 
 ## 自动化设置
 
-### 方法1: 使用 OpenClaw Cron (推荐)
+### 方法1: 使用系统 Cron (已设置)
 
-设置每2小时执行一次开发任务：
-
-```bash
-openclaw schedule create \
-  --name "sb-dev-session" \
-  --schedule "0 */2 * * *" \
-  --command "cd /root/.openclaw/workspace/S.B. && ./auto-dev.sh"
+已配置每小时自动运行：
+```
+0 * * * * /root/.openclaw/workspace/S.B./auto-dev.sh >> /root/.openclaw/workspace/S.B./cron.log 2>&1
 ```
 
-### 方法2: 使用系统 Cron
-
+查看执行日志：
 ```bash
-crontab -e
-# 添加：
-0 */2 * * * /root/.openclaw/workspace/S.B./auto-dev.sh >> /root/.openclaw/workspace/S.B./cron.log 2>&1
+tail -f /root/.openclaw/workspace/S.B./cron.log
 ```
 
 ## 手动触发开发
