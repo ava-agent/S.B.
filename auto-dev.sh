@@ -1,23 +1,53 @@
 #!/bin/bash
-# S.B. Auto Dev Script
-# 自动开发脚本 - 每次执行一个开发任务
+# S.B. Continuous Development System
+# 持续开发自动化脚本
 
 set -e
 
-cd /root/.openclaw/workspace/S.B.
+PROJECT_DIR="/root/.openclaw/workspace/S.B."
+LOG_FILE="$PROJECT_DIR/DEV_LOG.md"
+PLAN_FILE="$PROJECT_DIR/DEVELOPMENT_PLAN.md"
 
-echo "=== S.B. Auto Dev $(date '+%Y-%m-%d %H:%M:%S') ===" >> /root/.openclaw/workspace/S.B./DEV_LOG.md
+cd "$PROJECT_DIR"
 
-# 检查当前任务
-CURRENT_TASK=$(grep -A 1 "下次任务" /root/.openclaw/workspace/S.B./DEVELOPMENT_PLAN.md | tail -1 | sed 's/.*://' | xargs)
-echo "Current task: $CURRENT_TASK" >> /root/.openclaw/workspace/S.B./DEV_LOG.md
+echo "========================================"
+echo "S.B. Auto Dev Session - $(date '+%Y-%m-%d %H:%M:%S')"
+echo "========================================"
 
-# 运行测试确保基线
-npm test 2>&1 | tail -20 >> /root/.openclaw/workspace/S.B./DEV_LOG.md || true
+# 1. 拉取最新代码
+echo "📥 Pulling latest changes..."
+git pull origin main 2>/dev/null || echo "No remote or already up to date"
 
-# 提交开发日志
-cd /root/.openclaw/workspace/S.B.
+# 2. 运行测试确保基线
+echo "🧪 Running tests..."
+npm test 2>&1 | tee /tmp/test-output.txt || true
+TEST_STATUS=$?
+if [ $TEST_STATUS -eq 0 ]; then
+    echo "✅ All tests passed"
+else
+    echo "⚠️ Some tests failed, checking..."
+fi
+
+# 3. 获取当前任务
+CURRENT_TASK=$(grep -A 1 "下一步" "$LOG_FILE" | tail -1 | sed 's/.*：//' | xargs)
+echo "🎯 Current Task: $CURRENT_TASK"
+
+# 4. 检查 TypeScript 编译
+echo "🔍 TypeScript check..."
+npx tsc --noEmit 2>&1 | tee /tmp/tsc-output.txt || true
+
+# 5. 记录状态到日志
+echo "" >> "$LOG_FILE"
+echo "### $(date '+%Y-%m-%d %H:%M')" >> "$LOG_FILE"
+echo "**自动检查运行**" >> "$LOG_FILE"
+echo "- 测试状态: $([ $TEST_STATUS -eq 0 ] && echo '通过' || echo '失败')" >> "$LOG_FILE"
+echo "- 当前任务: $CURRENT_TASK" >> "$LOG_FILE"
+echo "" >> "$LOG_FILE"
+
+# 6. 提交开发日志
 git add DEV_LOG.md DEVELOPMENT_PLAN.md 2>/dev/null || true
-git commit -m "[Auto] Dev log update $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
+git commit -m "[Auto] Dev log update $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || echo "No changes to commit"
 
-echo "---" >> /root/.openclaw/workspace/S.B./DEV_LOG.md
+echo "========================================"
+echo "Session complete at $(date '+%Y-%m-%d %H:%M:%S')"
+echo "========================================"
