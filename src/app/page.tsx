@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { DebateState, Stance, Message } from "@/lib/types";
+import type { DebateState, Stance, Message, DebateHistory, DebateScore } from "@/lib/types";
 import { MAX_ROUNDS } from "@/lib/constants";
 import { HomeScreen } from "@/components/home-screen";
 import { DebateScreen } from "@/components/debate-screen";
 import { ReportScreen } from "@/components/report-screen";
+import { HistoryScreen } from "@/components/history-screen";
 import { getTodayTopic } from "@/actions/get-topic";
 import { getDebateReply } from "@/actions/debate-reply";
 import { generateScore } from "@/actions/generate-score";
 import { saveDebate } from "@/actions/save-debate";
+import { getDebateHistory } from "@/actions/get-history";
 
 const INITIAL_STATE: DebateState = {
   phase: "home",
@@ -24,6 +26,8 @@ const INITIAL_STATE: DebateState = {
 
 export default function Home() {
   const [state, setState] = useState<DebateState>(INITIAL_STATE);
+  const [history, setHistory] = useState<DebateHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   // Use ref to avoid stale closures in async callbacks
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -63,10 +67,6 @@ export default function Home() {
   //   Round 1: S.B. speaks → user replies
   //   Round 2: S.B. speaks → user replies
   //   Round 3: S.B. speaks → user replies → scoring
-  //
-  // When user sends in round N:
-  //   if N < MAX_ROUNDS: get S.B. reply for round N+1, advance round
-  //   if N === MAX_ROUNDS: go to scoring
   const handleSendMessage = useCallback(async (content: string) => {
     const { topic, stance, messages, currentRound } = stateRef.current;
     if (!topic || !stance) return;
@@ -142,6 +142,44 @@ export default function Home() {
     }));
   }, []);
 
+  const handleViewHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setState((s) => ({ ...s, phase: "history" }));
+    try {
+      const data = await getDebateHistory(20);
+      setHistory(data);
+    } catch (e) {
+      console.error("Failed to load history:", e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const handleCloseHistory = useCallback(() => {
+    setState((s) => ({ ...s, phase: "home" }));
+  }, []);
+
+  const handleViewDebateDetail = useCallback((debate: DebateHistory) => {
+    // Convert DebateHistory to DebateState for report screen
+    const score: DebateScore = {
+      logic: debate.score_logic,
+      evidence: debate.score_evidence,
+      emotion: debate.score_emotion,
+      rebuttal: debate.score_rebuttal,
+      sbIndex: debate.sb_index,
+      roast: debate.roast,
+    };
+    setState((s) => ({
+      ...s,
+      phase: "report",
+      topic: s.topic ? { ...s.topic, title: debate.topic_title } : null,
+      stance: debate.stance,
+      messages: debate.messages,
+      score,
+      isLoading: false,
+    }));
+  }, []);
+
   // Error display
   if (state.error && state.phase === "home") {
     return (
@@ -177,7 +215,10 @@ export default function Home() {
 
   switch (state.phase) {
     case "home":
-      return <HomeScreen topic={state.topic} onSelectStance={handleSelectStance} />;
+      return <HomeScreen topic={state.topic} onSelectStance={handleSelectStance} onViewHistory={handleViewHistory} />;
+
+    case "history":
+      return <HistoryScreen history={history} isLoading={historyLoading} onClose={handleCloseHistory} onViewDetail={handleViewDebateDetail} />;
 
     case "debate":
       return (
@@ -195,7 +236,7 @@ export default function Home() {
     case "report":
       return state.score ? (
         <ReportScreen
-          topicTitle={state.topic.title}
+          topicTitle={state.topic?.title || ""}
           stance={state.stance!}
           score={state.score}
           isGeneratingCard={state.isLoading}

@@ -26,7 +26,7 @@ export interface DebateScore {
 }
 
 export interface DebateState {
-  phase: "home" | "debate" | "report";
+  phase: "home" | "debate" | "report" | "history";
   topic: Topic | null;
   stance: Stance | null;
   messages: Message[];
@@ -34,4 +34,20 @@ export interface DebateState {
   score: DebateScore | null;
   isLoading: boolean;
   error: string | null;
+}
+
+// 辩论历史记录
+export interface DebateHistory {
+  id: string;
+  topic_id: string;
+  topic_title: string;
+  stance: Stance;
+  messages: Message[];
+  score_logic: Grade;
+  score_evidence: Grade;
+  score_emotion: Grade;
+  score_rebuttal: Grade;
+  sb_index: number;
+  roast: string;
+  created_at: string;
 }

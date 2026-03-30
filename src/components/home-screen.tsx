@@ -5,9 +5,10 @@ import type { Topic, Stance } from "@/lib/types";
 interface HomeScreenProps {
   topic: Topic;
   onSelectStance: (stance: Stance) => void;
+  onViewHistory: () => void;
 }
 
-export function HomeScreen({ topic, onSelectStance }: HomeScreenProps) {
+export function HomeScreen({ topic, onSelectStance, onViewHistory }: HomeScreenProps) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6">
       <div className="w-full max-w-lg text-center">
@@ -41,9 +42,17 @@ export function HomeScreen({ topic, onSelectStance }: HomeScreenProps) {
           </button>
         </div>
 
-        <p className="mt-6 text-xs text-sb-text-secondary">
-          选个立场，来和 S.B. 杠一杠
-        </p>
+        <div className="mt-6 flex justify-center gap-4">
+          <p className="text-xs text-sb-text-secondary">
+            选个立场，来和 S.B. 杠一杠
+          </p>
+          <button
+            onClick={onViewHistory}
+            className="text-xs text-sb-text-secondary underline hover:text-sb-text-primary"
+          >
+            历史记录
+          </button>
+        </div>
       </div>
     </div>
   );
