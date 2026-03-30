@@ -26,7 +26,7 @@ export interface DebateScore {
 }
 
 export interface DebateState {
-  phase: "home" | "debate" | "report" | "history";
+  phase: "home" | "debate" | "report" | "history" | "stats";
   topic: Topic | null;
   stance: Stance | null;
   messages: Message[];

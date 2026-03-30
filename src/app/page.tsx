@@ -7,11 +7,13 @@ import { HomeScreen } from "@/components/home-screen";
 import { DebateScreen } from "@/components/debate-screen";
 import { ReportScreen } from "@/components/report-screen";
 import { HistoryScreen } from "@/components/history-screen";
+import { StatsScreen } from "@/components/stats-screen";
 import { getTodayTopic } from "@/actions/get-topic";
 import { getDebateReply } from "@/actions/debate-reply";
 import { generateScore } from "@/actions/generate-score";
 import { saveDebate } from "@/actions/save-debate";
 import { getDebateHistory } from "@/actions/get-history";
+import { getUserStats, type UserStats } from "@/actions/get-stats";
 
 const INITIAL_STATE: DebateState = {
   phase: "home",
@@ -28,6 +30,8 @@ export default function Home() {
   const [state, setState] = useState<DebateState>(INITIAL_STATE);
   const [history, setHistory] = useState<DebateHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   // Use ref to avoid stale closures in async callbacks
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -159,6 +163,23 @@ export default function Home() {
     setState((s) => ({ ...s, phase: "home" }));
   }, []);
 
+  const handleViewStats = useCallback(async () => {
+    setStatsLoading(true);
+    setState((s) => ({ ...s, phase: "stats" }));
+    try {
+      const data = await getUserStats();
+      setStats(data);
+    } catch (e) {
+      console.error("Failed to load stats:", e);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  const handleCloseStats = useCallback(() => {
+    setState((s) => ({ ...s, phase: "home" }));
+  }, []);
+
   const handleViewDebateDetail = useCallback((debate: DebateHistory) => {
     // Convert DebateHistory to DebateState for report screen
     const score: DebateScore = {
@@ -215,7 +236,10 @@ export default function Home() {
 
   switch (state.phase) {
     case "home":
-      return <HomeScreen topic={state.topic} onSelectStance={handleSelectStance} onViewHistory={handleViewHistory} />;
+      return <HomeScreen topic={state.topic} onSelectStance={handleSelectStance} onViewHistory={handleViewHistory} onViewStats={handleViewStats} />;
+
+    case "stats":
+      return <StatsScreen stats={stats!} isLoading={statsLoading} onClose={handleCloseStats} />;
 
     case "history":
       return <HistoryScreen history={history} isLoading={historyLoading} onClose={handleCloseHistory} onViewDetail={handleViewDebateDetail} />;
