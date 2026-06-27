@@ -2,14 +2,8 @@
 
 import OpenAI from "openai";
 import { buildDebateSystemPrompt } from "@/lib/prompts";
+import { ARK_CHAT_MODEL, createArkClient } from "@/lib/ark";
 import type { Message, Stance } from "@/lib/types";
-
-const client = new OpenAI({
-  apiKey: process.env.GLM_API_KEY,
-  baseURL: "https://open.bigmodel.cn/api/paas/v4",
-});
-
-const MODEL = "glm-4-flash";
 
 export async function getDebateReply(
   topic: string,
@@ -26,8 +20,8 @@ export async function getDebateReply(
 
   // If round 1 and no messages yet, S.B. starts first
   if (round === 1 && messages.length === 0) {
-    const response = await client.chat.completions.create({
-      model: MODEL,
+    const response = await createArkClient().chat.completions.create({
+      model: ARK_CHAT_MODEL,
       max_tokens: 1024,
       messages: [
         { role: "system", content: systemPrompt },
@@ -49,8 +43,8 @@ export async function getDebateReply(
     })),
   ];
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
+  const response = await createArkClient().chat.completions.create({
+    model: ARK_CHAT_MODEL,
     max_tokens: 1024,
     messages: apiMessages,
   });

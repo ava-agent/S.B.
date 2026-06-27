@@ -1,16 +1,9 @@
 "use server";
 
-import OpenAI from "openai";
 import { buildScoringPrompt } from "@/lib/prompts";
+import { ARK_CHAT_MODEL, createArkClient, parseJsonFromModel } from "@/lib/ark";
 import { calculateSbIndex } from "@/lib/scoring";
 import type { Message, Stance, DebateScore, Grade } from "@/lib/types";
-
-const client = new OpenAI({
-  apiKey: process.env.GLM_API_KEY,
-  baseURL: "https://open.bigmodel.cn/api/paas/v4",
-});
-
-const MODEL = "glm-4-flash";
 
 const VALID_GRADES: Grade[] = [
   "S", "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "D",
@@ -27,19 +20,20 @@ export async function generateScore(
 ): Promise<DebateScore> {
   const prompt = buildScoringPrompt(topic, stance, messages);
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
+  const response = await createArkClient().chat.completions.create({
+    model: ARK_CHAT_MODEL,
     max_tokens: 512,
-    messages: [{ role: "user", content: prompt }],
+    messages: [
+      {
+        role: "system",
+        content: "严格输出合法 JSON，不要使用 markdown，不要解释。",
+      },
+      { role: "user", content: prompt },
+    ],
   });
 
   const text = response.choices[0].message.content ?? "";
-
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Failed to parse scoring response");
-
-  const parsed = JSON.parse(jsonMatch[0]);
+  const parsed = parseJsonFromModel(text) as Record<string, string>;
 
   const logic: Grade = isValidGrade(parsed.logic) ? parsed.logic : "C";
   const evidence: Grade = isValidGrade(parsed.evidence) ? parsed.evidence : "C";
