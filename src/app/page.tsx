@@ -41,7 +41,10 @@ export default function Home() {
 
   // Use ref to avoid stale closures in async callbacks
   const stateRef = useRef(state);
-  stateRef.current = state;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // 加载今日话题和分类
   useEffect(() => {

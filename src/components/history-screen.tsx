@@ -95,7 +95,7 @@ export function HistoryScreen({ history, isLoading, onClose, onViewDetail }: His
                 </div>
 
                 {/* Roast */}
-                <p className="mt-2 text-xs italic text-sb-text-secondary">"{debate.roast}"</p>
+                <p className="mt-2 text-xs italic text-sb-text-secondary">&quot;{debate.roast}&quot;</p>
 
                 {/* View Detail Button */}
                 <button
